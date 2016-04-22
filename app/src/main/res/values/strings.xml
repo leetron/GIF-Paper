@@ -1,0 +1,18 @@
+<resources>
+    <string name="app_name">GIF-Paper</string>
+    <string name="title_activity_settings">Settings</string>
+
+    <!-- Strings related to Settings -->
+
+    <!-- Example General settings -->
+    <string name="pref_header_general">General</string>
+
+    <string name="pref_title_antialias">Enable antialiasing</string>
+    <string name="pref_description_antialias">This makes the GIF less pixelated</string>
+
+    <string name="pref_title_filter_bitmap">Enable bitmap filtering</string>
+    <string name="pref_description_filter_bitmap">This makes the GIF less pixelated</string>
+
+    <string name="pref_title_dither">Enable dithering</string>
+    <string name="pref_description_dither">This makes the GIF less pixelated</string>
+</resources>
