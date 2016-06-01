@@ -1,6 +1,5 @@
 package io.github.skulltah.gifpaper.worker;
 
-import android.app.WallpaperManager;
 import android.content.SharedPreferences;
 import android.graphics.Canvas;
 import android.graphics.Movie;
@@ -9,6 +8,7 @@ import android.media.MediaPlayer;
 import android.os.Handler;
 import android.preference.PreferenceManager;
 import android.service.wallpaper.WallpaperService;
+import android.util.DisplayMetrics;
 import android.view.SurfaceHolder;
 
 import java.io.File;
@@ -17,8 +17,8 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 
-import io.github.skulltah.gifpaper.Helper;
 import io.github.skulltah.gifpaper.R;
+import io.github.skulltah.gifpaper.utils.Helper;
 
 public class GIFWallpaperService extends WallpaperService {
 
@@ -29,23 +29,23 @@ public class GIFWallpaperService extends WallpaperService {
 
     private class GIFWallpaperEngine extends WallpaperService.Engine
             implements SharedPreferences.OnSharedPreferenceChangeListener {
+
         private final Handler handler;
-        MediaPlayer mediaPlayer;
-        private int frameDuration = 100 / 3;
+
         private SurfaceHolder holder;
-        private Movie movie;
-        private boolean visible;
         private SharedPreferences prefs;
+        private boolean visible;
+
+        private float screenHeight, screenWidth;
+        // Videos
+        private MediaPlayer mediaPlayer;
+        // GIFs
+        private int frameDuration = 100 / 3;
+        private Movie movie;
         private String imageLocation;
-        private float height;
-        private float width;
-        private float scaleX;
-        private float scaleY;
+        private float scaleX, scaleY, scale;
         private float offset;
         private Paint paint;
-        private WallpaperManager wallpaperManager;
-        private int desiredMinimumWidth;
-        private float widthHeightRatio;
         private Runnable drawGIF = new Runnable() {
             public void run() {
                 draw();
@@ -65,16 +65,16 @@ public class GIFWallpaperService extends WallpaperService {
 
             this.holder = surfaceHolder;
             this.paint = new Paint();
-            this.wallpaperManager = WallpaperManager.getInstance(getBaseContext());
 
             paint.setAntiAlias(true);
             paint.setFilterBitmap(true);
             paint.setDither(true);
 
-            initialize();
-        }
-
-        private void initialize() {
+            DisplayMetrics displayMetrics = getApplicationContext().getResources().getDisplayMetrics();
+            this.screenHeight = displayMetrics.heightPixels;
+            this.screenWidth = displayMetrics.widthPixels;
+//            screenHeight = 960;
+//            screenWidth = 540;
             loadBackgroundFromPrefs();
         }
 
@@ -102,6 +102,8 @@ public class GIFWallpaperService extends WallpaperService {
 
         @Override
         public void onVisibilityChanged(boolean visible) {
+            super.onVisibilityChanged(visible);
+
             this.visible = visible;
             if (visible) {
                 handler.post(drawGIF);
@@ -114,30 +116,15 @@ public class GIFWallpaperService extends WallpaperService {
         public void onSurfaceChanged(SurfaceHolder holder, int format, int width, int height) {
             super.onSurfaceChanged(holder, format, width, height);
 
-            if (movie == null)
-                return;
-
-            this.width = width;
-            this.height = height;
-
-            desiredMinimumWidth = wallpaperManager.getDesiredMinimumWidth();
-
-            scaleX = getScale(desiredMinimumWidth, movie.width(), height, movie.height());
-            scaleY = getScale(desiredMinimumWidth, movie.width(), height, movie.height());
-
-            draw();
+            this.screenHeight = height;
+            this.screenWidth = width;
         }
 
         @Override
         public void onSurfaceCreated(SurfaceHolder holder) {
+            super.onSurfaceCreated(holder);
+
             this.holder = holder;
-
-            if (movie == null) return;
-
-            desiredMinimumWidth = wallpaperManager.getDesiredMinimumWidth();
-
-            scaleX = getScale(desiredMinimumWidth, movie.width(), height, movie.height());
-            scaleY = getScale(desiredMinimumWidth, movie.width(), height, movie.height());
         }
 
         @Override
@@ -150,12 +137,9 @@ public class GIFWallpaperService extends WallpaperService {
         @Override
         public void onOffsetsChanged(float xOffset, float yOffset,
                                      float xStep, float yStep, int xPixels, int yPixels) {
-            if (movie == null) return;
+            super.onOffsetsChanged(xOffset, yOffset, xStep, yStep, xPixels, yPixels);
 
-            if (widthHeightRatio > 1)
-                offset = -xOffset * movie.width() * xStep;
-            else
-                offset = xPixels;
+            offset = -xOffset * (GIFWidth - screenWidth);
 
             draw();
         }
@@ -163,6 +147,7 @@ public class GIFWallpaperService extends WallpaperService {
         @Override
         public void onDestroy() {
             super.onDestroy();
+
             handler.removeCallbacks(drawGIF);
         }
 
@@ -176,14 +161,9 @@ public class GIFWallpaperService extends WallpaperService {
                     Canvas canvas = holder.lockCanvas();
                     canvas.save();
 
-                    if (scaleX <= 0)
-                        scaleX = 1;
-                    if (scaleY <= 0)
-                        scaleY = 1;
-
                     // Adjust size and position so that
                     // the image looks good on your screen
-                    canvas.scale(scaleX, scaleY);
+                    canvas.scale(scale, scale);
 
                     movie.draw(canvas, offset, 0, paint);
 
@@ -207,13 +187,7 @@ public class GIFWallpaperService extends WallpaperService {
 
             this.movie = movie;
 
-            float w = movie.width();
-            float h = movie.height();
-
-            scaleX = getScale(desiredMinimumWidth, w, height, h);
-            scaleY = getScale(desiredMinimumWidth, w, height, h);
-
-            widthHeightRatio = w / h;
+            calculateScale(GIFWidth, GIFHeight);
 
             visible = isVisible();
 
@@ -222,18 +196,20 @@ public class GIFWallpaperService extends WallpaperService {
             }
         }
 
-        private float getScale(float origX, float targetX, float origY, float targetY) {
-            float scaleX = getScale(origX, targetX);
-            float scaleY = getScale(origY, targetY);
+        private void calculateScale(float sourceWidth, float sourceHeight) {
+            float scaleX = screenWidth / sourceWidth;
+            float scaleY = screenHeight / sourceHeight;
 
-            if (scaleX > scaleY)
-                return scaleX;
+            this.scaleX = scaleX;
+            this.scaleY = scaleY;
 
-            return scaleY;
-        }
+            float ratio = Math.max(
+                    (float) screenHeight / sourceWidth,
+                    (float) screenHeight / sourceHeight);
+            int width = Math.round((float) ratio * sourceWidth);
+            int height = Math.round((float) ratio * sourceHeight);
 
-        private float getScale(float orig, float target) {
-            return orig / target;
+            this.scale = ratio;
         }
 
         private void loadBackgroundFromPrefs() {
@@ -252,17 +228,21 @@ public class GIFWallpaperService extends WallpaperService {
             }
         }
 
+        private float GIFWidth,
+                GIFHeight;
+
         private void getGIF() {
             File file = new File(imageLocation);
 
             if (file.exists()) {
                 try {
                     FileInputStream fileInputStream = new FileInputStream(file);
-
                     Movie movie = Movie.decodeStream(fileInputStream);
 
-                    setMovie(movie);
+                    GIFWidth = movie.width();
+                    GIFHeight = movie.height();
 
+                    setMovie(movie);
                     mediaPlayer = null;
                 } catch (FileNotFoundException ex) {
                     Helper.log(ex);

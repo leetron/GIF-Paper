@@ -94,7 +94,7 @@ public class GifBrowserFragment extends Fragment {
         float dpHeight = displayMetrics.heightPixels / displayMetrics.density;
         float dpWidth = displayMetrics.widthPixels / displayMetrics.density;
 
-        adapter = new ImageAdapter(getContext());
+        adapter = new ImageAdapter(getActivity());
 
         errorView.setTitle("No GIFs found");
         errorView.setSubtitle("Come back once you've downloaded some GIFs.");

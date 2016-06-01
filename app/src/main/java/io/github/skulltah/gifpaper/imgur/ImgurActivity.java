@@ -15,7 +15,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.greysonparrelli.permiso.Permiso;
 
-import io.github.skulltah.gifpaper.Helper;
+import io.github.skulltah.gifpaper.utils.Helper;
 import io.github.skulltah.gifpaper.R;
 import io.github.skulltah.gifpaper.imgur.json.ImgurGallery;
 import tr.xip.errorview.ErrorView;

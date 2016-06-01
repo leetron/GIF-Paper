@@ -1,12 +1,18 @@
-package io.github.skulltah.gifpaper;
+package io.github.skulltah.gifpaper.utils;
 
+import android.app.Activity;
 import android.content.Context;
 import android.database.Cursor;
+import android.graphics.Movie;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.Uri;
 import android.os.StrictMode;
 import android.provider.MediaStore;
+import android.view.Gravity;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.widget.Toast;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -14,6 +20,8 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
+
+import io.github.skulltah.gifpaper.R;
 
 public class Helper {
 
@@ -49,7 +57,8 @@ public class Helper {
                 if (absolutePathOfImage.endsWith(".gif")
                         || absolutePathOfImage.endsWith(".gifv")
                         || absolutePathOfImage.endsWith(".webm")
-                        || absolutePathOfImage.endsWith(".mp4"))
+//                        || absolutePathOfImage.endsWith(".mp4")
+                        )
                     listOfAllImages.add(absolutePathOfImage);
             }
 
@@ -123,5 +132,24 @@ public class Helper {
         }
 
         return response;
+    }
+
+    public static void showGifToast(final Activity context, final Movie movie) {
+        final LayoutInflater inflater = context.getLayoutInflater();
+        final View layout = inflater.inflate(R.layout.gif_toast, null);
+        final GifView gifView = (GifView) layout.findViewById(R.id.gif_view);
+
+        gifView.setMovie(movie);
+
+        context.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                final Toast toastLocal = new Toast(context);
+                toastLocal.setGravity(Gravity.CENTER_VERTICAL, 0, 0);
+                toastLocal.setDuration(Toast.LENGTH_LONG);
+                toastLocal.setView(layout);
+                toastLocal.show();
+            }
+        });
     }
 }

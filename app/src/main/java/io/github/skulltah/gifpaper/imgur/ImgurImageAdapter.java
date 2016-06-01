@@ -1,8 +1,10 @@
 package io.github.skulltah.gifpaper.imgur;
 
+import android.app.Activity;
 import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.graphics.Movie;
 import android.graphics.PorterDuff;
 import android.os.Environment;
 import android.preference.PreferenceManager;
@@ -14,28 +16,31 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 
+import com.nostra13.universalimageloader.core.DisplayImageOptions;
 import com.nostra13.universalimageloader.core.ImageLoader;
 import com.nostra13.universalimageloader.core.ImageLoaderConfiguration;
-import com.nostra13.universalimageloader.core.assist.ImageSize;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URL;
 
-import io.github.skulltah.gifpaper.Helper;
 import io.github.skulltah.gifpaper.R;
 import io.github.skulltah.gifpaper.imgur.json.Datum;
 import io.github.skulltah.gifpaper.imgur.json.ImgurGallery;
+import io.github.skulltah.gifpaper.utils.Helper;
 
 public class ImgurImageAdapter extends RecyclerView.Adapter<ImgurImageAdapter.MyViewHolder> {
 
-    ImageLoader imageLoader;
+    private Activity context;
+    private ImageLoader imageLoader;
     private ImgurGallery imgurGallery;
 
-    public ImgurImageAdapter(Context context, ImgurGallery imgurGallery) {
+    public ImgurImageAdapter(Activity context, ImgurGallery imgurGallery) {
+        this.context = context;
         this.imgurGallery = imgurGallery;
         imageLoader = ImageLoader.getInstance();
         imageLoader.init(ImageLoaderConfiguration.createDefault(context));
@@ -84,12 +89,16 @@ public class ImgurImageAdapter extends RecyclerView.Adapter<ImgurImageAdapter.My
         final String gifUrl = String.format("http://i.imgur.com/%s.gif", imgurPost.hash);
         final String thumbnailUrl = String.format("http://i.imgur.com/%ss.gif", imgurPost.hash);
 
-        imageLoader.displayImage(thumbnailUrl, holder.imageView, new ImageSize(120, 120));
+        DisplayImageOptions options = new DisplayImageOptions.Builder()
+                .showImageOnLoading(R.drawable.placeholder_cloud)
+                .build();
+
+        imageLoader.displayImage(thumbnailUrl, holder.imageView, options);
 
         holder.imageView.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                downloadImage(context, gifUrl, imgurPost.hash, holder.imageView.getRootView());
+                downloadImage(gifUrl, imgurPost.hash, holder.imageView.getRootView());
             }
         });
 
@@ -119,7 +128,7 @@ public class ImgurImageAdapter extends RecyclerView.Adapter<ImgurImageAdapter.My
         });
     }
 
-    private void downloadImage(final Context context, final String gifUrl, final String hash, final View rootView) {
+    private void downloadImage(final String gifUrl, final String hash, final View rootView) {
         final ProgressDialog progressDialog = new ProgressDialog(context);
         progressDialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
         progressDialog.setTitle("Downloading GIF...");
@@ -163,6 +172,14 @@ public class ImgurImageAdapter extends RecyclerView.Adapter<ImgurImageAdapter.My
 
                 progressDialog.dismiss();
                 Snackbar.make(rootView, "GIF set as wallpaper.", Snackbar.LENGTH_SHORT).show();
+
+                try {
+                    FileInputStream fileInputStream = new FileInputStream(file);
+                    Movie movie = Movie.decodeStream(fileInputStream);
+                    Helper.showGifToast(context, movie);
+                } catch (Exception ex) {
+                    Helper.log(ex);
+                }
             }
         };
         mThread.start();

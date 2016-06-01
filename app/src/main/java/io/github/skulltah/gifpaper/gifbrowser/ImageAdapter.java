@@ -1,8 +1,9 @@
 package io.github.skulltah.gifpaper.gifbrowser;
 
-import android.content.Context;
+import android.app.Activity;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.graphics.Movie;
 import android.graphics.PorterDuff;
 import android.preference.PreferenceManager;
 import android.support.design.widget.Snackbar;
@@ -13,30 +14,36 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 
+import com.nostra13.universalimageloader.core.DisplayImageOptions;
 import com.nostra13.universalimageloader.core.ImageLoader;
 import com.nostra13.universalimageloader.core.ImageLoaderConfiguration;
-import com.nostra13.universalimageloader.core.assist.ImageSize;
+import com.nostra13.universalimageloader.core.assist.ImageScaleType;
 
+import java.io.File;
+import java.io.FileInputStream;
 import java.util.ArrayList;
 
-import io.github.skulltah.gifpaper.Helper;
 import io.github.skulltah.gifpaper.R;
 import io.github.skulltah.gifpaper.imgur.ImgurActivity;
+import io.github.skulltah.gifpaper.utils.Helper;
 
 public class ImageAdapter extends RecyclerView.Adapter<ImageAdapter.MyViewHolder> {
 
-    ImageLoader imageLoader;
+    private Activity context;
+    private ImageLoader imageLoader;
     private ArrayList<String> items;
 
-    public ImageAdapter(Context c) {
+    public ImageAdapter(Activity context) {
+        this.context = context;
+
         imageLoader = ImageLoader.getInstance();
-        items = Helper.getAllShownImagesPath(c);
-        imageLoader.init(ImageLoaderConfiguration.createDefault(c));
+        items = Helper.getAllShownImagesPath(context);
+        imageLoader.init(ImageLoaderConfiguration.createDefault(context));
 
         if (items == null || items.size() <= 0) {
-            Intent i = new Intent(c, ImgurActivity.class);
+            Intent i = new Intent(context, ImgurActivity.class);
             i.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
-            c.startActivity(i);
+            context.startActivity(i);
         }
     }
 
@@ -50,7 +57,6 @@ public class ImageAdapter extends RecyclerView.Adapter<ImageAdapter.MyViewHolder
 
     @Override
     public void onBindViewHolder(final MyViewHolder holder, int position) {
-        final Context context = holder.imageView.getContext();
         if (context == null
                 || items == null)
             return;
@@ -60,21 +66,39 @@ public class ImageAdapter extends RecyclerView.Adapter<ImageAdapter.MyViewHolder
             imageLoader.init(ImageLoaderConfiguration.createDefault(context));
         }
 
+        DisplayImageOptions options = new DisplayImageOptions.Builder()
+                .showImageOnLoading(R.drawable.placeholder_local)
+                .imageScaleType(ImageScaleType.EXACTLY)
+                .build();
+
         final String location = items.get(position);
-        imageLoader.displayImage("file:///" + location, holder.imageView, new ImageSize(120, 120));
+        imageLoader.displayImage("file:///" + location, holder.imageView, options);
 
         holder.imageView.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 Snackbar.make(holder.imageView.getRootView(), "Setting GIF as wallpaper...", Snackbar.LENGTH_INDEFINITE).show();
 
-                SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
+                File file = new File(location);
 
-                SharedPreferences.Editor editor = prefs.edit();
-                editor.putString("image_custom", location);
-                editor.commit();
+                if (file.exists()) {
+                    SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
+                    SharedPreferences.Editor editor = prefs.edit();
+                    editor.putString("image_custom", location);
+                    editor.commit();
 
-                Snackbar.make(holder.imageView.getRootView(), "GIF set as wallpaper!", Snackbar.LENGTH_SHORT).show();
+                    Snackbar.make(holder.imageView.getRootView(), "GIF set as wallpaper!", Snackbar.LENGTH_SHORT).show();
+
+                    try {
+                        FileInputStream fileInputStream = new FileInputStream(file);
+                        Movie movie = Movie.decodeStream(fileInputStream);
+                        Helper.showGifToast(context, movie);
+                    } catch (Exception ex) {
+                        Helper.log(ex);
+                    }
+                } else {
+                    Snackbar.make(holder.imageView.getRootView(), "Failed to open GIF.", Snackbar.LENGTH_SHORT).show();
+                }
             }
         });
 

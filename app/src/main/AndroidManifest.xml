@@ -46,9 +46,13 @@
             android:name=".settings.SettingsActivity"
             android:label="@string/title_activity_settings">
         </activity>
-        <activity android:name=".settings.PrefsActivity">
+        <activity
+            android:name=".settings.PrefsActivity"
+            android:label="Preferences">
         </activity>
-        <activity android:name=".imgur.ImgurActivity">
+        <activity
+            android:name=".imgur.ImgurActivity"
+            android:label="Get GIFs">
         </activity>
     </application>
 
